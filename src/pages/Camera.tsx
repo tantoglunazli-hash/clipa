@@ -68,8 +68,9 @@ export default function Camera() {
     const canvas = canvasRef.current
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
-    canvas.getContext('2d')!.drawImage(video, 0, 0)
-    const imageData = canvas.toDataURL('image/jpeg', 0.92)
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(video, 0, 0)
+    const imageData = preprocessForOcr(canvas)
     await processImage(imageData)
   }
 
@@ -78,10 +79,37 @@ export default function Camera() {
     if (!file) return
     const reader = new FileReader()
     reader.onload = async (ev) => {
-      const imageData = ev.target?.result as string
-      await processImage(imageData)
+      const src = ev.target?.result as string
+      const img = new Image()
+      img.onload = async () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        canvas.getContext('2d')!.drawImage(img, 0, 0)
+        const imageData = preprocessForOcr(canvas)
+        await processImage(imageData)
+      }
+      img.src = src
     }
     reader.readAsDataURL(file)
+  }
+
+  function preprocessForOcr(canvas: HTMLCanvasElement): string {
+    const ctx = canvas.getContext('2d')!
+    const { width, height } = canvas
+    const imageData = ctx.getImageData(0, 0, width, height)
+    const d = imageData.data
+
+    for (let i = 0; i < d.length; i += 4) {
+      // Gri tona çevir
+      const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]
+      // Kontrast artır (eşikleme)
+      const val = gray > 140 ? 255 : gray < 80 ? 0 : gray
+      d[i] = d[i + 1] = d[i + 2] = val
+    }
+
+    ctx.putImageData(imageData, 0, 0)
+    return canvas.toDataURL('image/png')
   }
 
   return (

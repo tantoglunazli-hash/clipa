@@ -27,6 +27,11 @@ export async function extractWithUnderlines(
     },
   })
 
+  await worker.setParameters({
+    tessedit_pageseg_mode: '6' as any, // tek blok metin
+    preserve_interword_spaces: '1' as any,
+  })
+
   const { data } = await worker.recognize(imageData)
   await worker.terminate()
 
