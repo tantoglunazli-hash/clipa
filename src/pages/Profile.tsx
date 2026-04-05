@@ -4,14 +4,14 @@ import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
+import { useLibraryStore } from '../stores/libraryStore'
 import { useSettingsStore, applyTheme } from '../stores/settingsStore'
-import type { UserStats } from '../types'
 
 export default function Profile() {
   const navigate = useNavigate()
   const { user, profile, setUser, setProfile } = useAuthStore()
   const { theme, setTheme } = useSettingsStore()
-  const [stats, setStats] = useState<UserStats>({ total_books: 0, total_quotes: 0 })
+  const { books, quotes } = useLibraryStore()
   const [showAppearance, setShowAppearance] = useState(false)
 
   useEffect(() => {
@@ -20,14 +20,6 @@ export default function Profile() {
 
   useEffect(() => {
     if (!user) return
-    supabase
-      .from('user_stats')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
-      .then(({ data }) => {
-        if (data) setStats({ total_books: Number(data.total_books), total_quotes: Number(data.total_quotes) })
-      })
     supabase
       .from('profiles')
       .select('*')
@@ -73,8 +65,8 @@ export default function Profile() {
         {/* Stats */}
         <section className="grid grid-cols-2 gap-4 mb-10">
           {[
-            { label: 'Toplam Alıntı', value: stats.total_quotes },
-            { label: 'Toplam Kitap', value: stats.total_books },
+            { label: 'Toplam Alıntı', value: quotes.length },
+            { label: 'Toplam Kitap', value: books.length },
           ].map((stat) => (
             <div key={stat.label} className="bg-surface-low dark:bg-dark-surface-container p-6 rounded-xl text-center">
               <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant block mb-1">

@@ -81,6 +81,15 @@ export default function BookDetail() {
             icon="format_quote"
             title="Henüz alıntı yok"
             description="Kamera ile bir sayfa tara"
+            action={
+              <button
+                onClick={() => navigate('/camera')}
+                className="mt-2 flex items-center gap-2 bg-primary text-white font-label text-sm uppercase tracking-widest px-5 py-3 rounded-md active:scale-95 transition-transform"
+              >
+                <span className="material-symbols-outlined text-xl">photo_camera</span>
+                Kamera Aç
+              </button>
+            }
           />
         ) : (
           <div className="space-y-3 px-2">

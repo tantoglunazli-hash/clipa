@@ -1,12 +1,12 @@
 import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { extractWithUnderlines } from '../lib/ocr'
-import BottomNav from '../components/BottomNav'
 
 export default function Camera() {
   const navigate = useNavigate()
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [streaming, setStreaming] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -30,7 +30,7 @@ export default function Camera() {
         videoRef.current.onloadedmetadata = () => setStreaming(true)
       }
     } catch {
-      setError('Kameraya erişilemiyor. Tarayıcı iznini kontrol et.')
+      setError('Kamera izni verilmedi. Galeriden fotoğraf seçebilirsin.')
     }
   }
 
@@ -38,19 +38,11 @@ export default function Camera() {
     streamRef.current?.getTracks().forEach((t) => t.stop())
   }
 
-  async function capture() {
-    if (!videoRef.current || !canvasRef.current) return
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    canvas.getContext('2d')!.drawImage(video, 0, 0)
-    const imageData = canvas.toDataURL('image/jpeg', 0.92)
-
+  async function processImage(imageData: string) {
     setProcessing(true)
     setProgress(0)
     setPhase('ocr')
-
+    setError('')
     try {
       const result = await extractWithUnderlines(imageData, (pct) => {
         setProgress(pct)
@@ -70,8 +62,30 @@ export default function Camera() {
     }
   }
 
+  async function capture() {
+    if (!videoRef.current || !canvasRef.current) return
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    canvas.getContext('2d')!.drawImage(video, 0, 0)
+    const imageData = canvas.toDataURL('image/jpeg', 0.92)
+    await processImage(imageData)
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const imageData = ev.target?.result as string
+      await processImage(imageData)
+    }
+    reader.readAsDataURL(file)
+  }
+
   return (
-    <div className="min-h-screen bg-black flex flex-col pb-20">
+    <div className="min-h-screen bg-black flex flex-col">
       <div className="relative flex-1 overflow-hidden">
         <video
           ref={videoRef}
@@ -81,6 +95,14 @@ export default function Camera() {
           className="w-full h-full object-cover"
         />
         <canvas ref={canvasRef} className="hidden" />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
 
         {/* Çerçeve overlay */}
         {streaming && !processing && (
@@ -97,6 +119,16 @@ export default function Camera() {
               Sayfayı çerçeve içine al
             </p>
           </>
+        )}
+
+        {/* Kamera izni yok — galeri butonu */}
+        {!streaming && !processing && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+            <span className="material-symbols-outlined text-5xl text-white/40">no_photography</span>
+            <p className="font-label text-white/60 text-sm text-center px-8">
+              Kamera izni verilmedi
+            </p>
+          </div>
         )}
 
         {/* İşleniyor */}
@@ -121,7 +153,7 @@ export default function Camera() {
         )}
 
         {error && (
-          <div className="absolute bottom-4 left-4 right-4 bg-error/90 text-white rounded-md p-3 text-center">
+          <div className="absolute bottom-4 left-4 right-4 bg-black/80 text-white rounded-md p-3 text-center">
             <p className="font-label text-sm">{error}</p>
             <button
               onClick={() => { setError(''); startCamera() }}
@@ -134,19 +166,34 @@ export default function Camera() {
       </div>
 
       <div className="flex items-center justify-center gap-8 py-6 bg-black">
+        {/* Geri */}
         <button
           onClick={() => navigate(-1)}
           className="w-12 h-12 rounded-full border border-white/30 flex items-center justify-center text-white"
         >
           <span className="material-symbols-outlined">close</span>
         </button>
-        <button
-          onClick={capture}
-          disabled={!streaming || processing}
-          className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform"
-        >
-          <div className="w-14 h-14 bg-white rounded-full" />
-        </button>
+
+        {/* Çek veya Galeri */}
+        {streaming ? (
+          <button
+            onClick={capture}
+            disabled={processing}
+            className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform"
+          >
+            <div className="w-14 h-14 bg-white rounded-full" />
+          </button>
+        ) : (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={processing}
+            className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform"
+          >
+            <span className="material-symbols-outlined text-white text-3xl">photo_library</span>
+          </button>
+        )}
+
+        {/* Manuel giriş */}
         <button
           onClick={() => navigate('/add-quote')}
           className="w-12 h-12 rounded-full border border-white/30 flex items-center justify-center text-white"
@@ -154,8 +201,6 @@ export default function Camera() {
           <span className="material-symbols-outlined">edit</span>
         </button>
       </div>
-
-      <BottomNav />
     </div>
   )
 }
