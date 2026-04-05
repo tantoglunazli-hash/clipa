@@ -179,9 +179,9 @@ export default function Camera() {
           <button
             onClick={capture}
             disabled={processing}
-            className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform"
+            className="w-20 h-20 rounded-full bg-red-500 border-4 border-white flex items-center justify-center disabled:opacity-40 active:scale-90 transition-transform shadow-lg"
           >
-            <div className="w-14 h-14 bg-white rounded-full" />
+            <span className="material-symbols-outlined text-white text-3xl">photo_camera</span>
           </button>
         ) : (
           <button
